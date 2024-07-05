@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Webix Right Sidebar Example</title>
+    <link rel="stylesheet" href="https://cdn.webix.com/edge/webix.min.css" type="text/css">
+    <style>
+        /* Custom CSS to position the sidebar on the right */
+        .webix_layout_line .webix_sidebar {
+            right: 0;
+            left: auto;
+            overflow-y: auto;
+        }
+        #sidebar {
+          position: absolute;
+          right: 0;
+        }
+        .delete-icon {
+            cursor: pointer;
+            margin-left: 10px;
+            color: rgb(117, 110, 110);
+        }
+        .webix_tree_item {
+          display: flex;
+          justify-content: space-between;
+        }
+    </style>
+</head>
+<body>
+    <div id="sidebar"></div>
+    <button onclick="addItemToSidebar()">add item</button>
+    <script src="https://cdn.webix.com/edge/webix.min.js" type="text/javascript"></script>
+    <script>
+        // Define initial sidebar data
+        let sidebarData = [
+            { id: "dashboard", value: "Dashboard", filter: {a: "b", b: "b"} },
+            { id: "users", value: "Users", filter: {a: "b", b: "b"} },
+            { id: "settings", value: "Settings", filter: {a: "b", b: "b"} },            
+            { id: "asdf", value: "Dashboard", filter: {a: "b", b: "b"} },
+            { id: "fds", value: "Users", filter: {a: "b", b: "b"} },
+            { id: "as", value: "Settings", filter: {a: "b", b: "b"} },
+            { id: "de", value: "Dashboard", filter: {a: "b", b: "b"} },
+            { id: "vd", value: "Users", filter: {a: "b", b: "b"} },
+            { id: "dc", value: "Settings", filter: {a: "b", b: "b"} }
+        ];
+
+        // Initialize Webix layout with sidebar on the right
+        webix.ui({
+            container: "sidebar",
+            rows: [
+                {
+                    cols: [
+                        {
+                            view: "sidebar",
+                            id: "mySidebar",
+                            data: sidebarData,
+                            gravity: 1,
+                            template: function(obj) {
+                                return obj.value + `<span class='delete-icon' data-id='${obj.id}'>&#10060;</span>`;
+                            },
+                            onClick: {
+                                "delete-icon": function(e, id) {
+                                    deleteItemFromSidebar(id);
+                                    return false; // Prevents the default item click event
+                                }
+                            },
+                            on: {
+                                onItemClick: function(id) {
+                                    // Get the clicked item data
+                                    const item = this.getItem(id);
+                                    console.log(item.filter)
+                                }
+                            }
+                        }
+                    ]
+                }
+            ]
+        });
+
+        // Function to add a new item to the sidebar
+        function addItemToSidebar() {
+            const newItem = { id: webix.uid(), value: "New Item", filter: "new_filter" };
+            sidebarData.push(newItem);
+            $$("mySidebar").clearAll();
+            $$("mySidebar").parse(sidebarData);
+        }
+
+        // Function to delete an item from the sidebar
+        function deleteItemFromSidebar(id) {
+            sidebarData = sidebarData.filter(item => item.id != id);
+            $$("mySidebar").clearAll();
+            $$("mySidebar").parse(sidebarData);
+        }
+
+        // Move the sidebar to the right side
+        document.querySelector('.webix_sidebar').style.position = 'fixed';
+        document.querySelector('.webix_sidebar').style.right = '0';
+        document.querySelector('.webix_sidebar').style.top = '0';
+        document.querySelector('.webix_sidebar').style.height = '100%';
+    </script>
+</body>
+</html>
