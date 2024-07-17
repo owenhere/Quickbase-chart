@@ -11,7 +11,7 @@
     <link href="https://unpkg.com/slim-select@latest/dist/slimselect.css" rel="stylesheet"></link>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdn.webix.com/edge/webix.min.css" type="text/css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/autocomplete.js/0.38.0/autocomplete.min.css">
+    <!-- <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/autocomplete.js/0.38.0/autocomplete.min.css"> -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
     <style>
@@ -57,6 +57,16 @@
           display: flex;
           justify-content: space-between;
         }
+        .loading {
+            display: none;
+            font-size: 20px;
+            align-items: center;
+            justify-content: center;
+            color: blue;
+        }
+        .result {
+            display: none;
+        }
     </style>
     <style>
       .google-visualization-controls-label{
@@ -72,45 +82,104 @@
           </select>
           <select id="department" multiple class="w-[300px] m-4">
           </select>
-          <select id="netherlands" multiple class="w-[300px] m-4">
+          <select id="employees" multiple class="w-[300px] m-4">
           </select>
           <select id="calendartype" multiple class="w-[300px] m-4">
           </select>
         </div>
         <div class="flex flex-row items-center">
           <input type="text" id="employeeInput" placeholder="Employee" class="w-[150px], border h-[30px] rounded m-4">
-          <div class="ml-2">From:</div>
+          <div class="ml-2">Is on or After:</div>
+          <input type="text" id="fromInput" class="w-[50px] border h-[30px] rounded m-4">
+          <select id="fromSel" class="w-[200px] m-4">
+            <option value="0">the date</option>
+            <option value="1">day(s) in the past</option>
+            <option value="2">yesterday</option>
+            <option value="3" selected>today</option>
+            <option value="4">tomorrow</option>
+            <option value="5">day(s) in the future</option>
+          </select>
           <input id="frompicker" class="w-[150px] border h-[30px] rounded m-4" type="text"/>
           <!-- <input type="text" id="fromInput" placeholder="From Year-Week(****.**)" class="w-[150px], border h-[30px] rounded m-4"> -->
-          <div class="ml-2">To:</div>
+          <div class="ml-2">Is on or Before:</div>
+          <input type="text" id="toInput" class="w-[50px] border h-[30px] rounded m-4">
+          <select id="toSel" class="w-[200px] m-4">
+            <option value="0">the date</option>
+            <option value="1">day(s) in the past</option>
+            <option value="2">yesterday</option>
+            <option value="3">today</option>
+            <option value="4">tomorrow</option>
+            <option value="5" selected>day(s) in the future</option>
+          </select>
           <input id="topicker" class="w-[150px] border h-[30px] rounded m-4" />
           <!-- <input type="text" id="toInput" placeholder="To Year-Week(****.**)" class="w-[150px], border h-[30px] rounded m-4"> -->
+          
+        </div>
+        <div class="flex flex-row items-center ml-[20px]">
           <label>Stacked</label>
-          <select id="stackedBar" class="w-[300px] m-4">
+          <select id="stackedBar" class="w-[150px] m-4">
             <option value="0">None</option>
             <option value="1">Service Type</option>
             <option value="2">Assay Type</option>
           </select>
           <input type="checkbox" class="mx-2" id="sameaxis" checked/> 
           <label for="sameaxis">Use Same Axis</label>
+          <div class="flex flex-row items-center ml-[20px]" id="saveDIV">
+            <input type="text" id="name" class="w-[200px] h-[30px] border rounded m-4" placeholder="Enter the name for saving.">
+            <button onclick="saveFilters()">Save</button>
+          </div>
         </div>
-        <div class="flex flex-row items-center">
-          <input type="text" id="name" class="w-[200px] h-[30px] border rounded m-4" placeholder="Enter the name for saving.">
-          <button onclick="saveFilters()">Save</button>
-        </div>
+        
       </div>
+      <div id="loading" style="width: 90vw; height: 80vh;" class="loading">Loading...</div>
       <div id="chart_div" style="width: 90vw; height: 80vh;" class="flex items-center justify-center"></div>
     </div>
     <div id="sidebar"></div>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="https://cdn.webix.com/edge/webix.min.js" type="text/javascript"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/autocomplete.js/0.38.0/autocomplete.min.js"></script>
+    <!-- <script src="https://cdnjs.cloudflare.com/ajax/libs/autocomplete.js/0.38.0/autocomplete.min.js"></script> -->
     <script type="text/javascript">
       let calendar_resource_Data, displayData, laboratoryFilters = [], employeeFilter = [], departmentFilters = [], serviceTypes = [], assayTypes = [];
-      let netherlands_E_Filters = [], calendarTypeFilters = [], stackedType = 0, same = true;
-      let laboSelFilter = [], deparSelFilter = [], emploSelFilter = "", netheSelE_Filter = [], calendarSelFilter = [], fromFilters = 0, toFilters = 0 ;
-      let from = parseFloat(getYearWeek(new Date()));
-      let to = parseFloat(getYearWeek(new Date(), 1));
+      let netherlands_E_Filters = [], lenexa_E_Filters = [], whitesboro_E_Filters = [], calendarTypeFilters = [], stackedType = 0, same = true;
+      let laboSelFilter = [], deparSelFilter = [], emploSelFilter = "", employeeSelFilter = [], calendarSelFilter = [], fromFilters = 0, toFilters = 0 ;
+      let loadingElement, resultElement, tempEmployee = [], flag = 0, isAvailable = true;
+      let fromType=3, toType=5, fromInputVal = 0, toInputVal = 365;
+      let availableEmails = ['m.berroth@outlook.com','tebebegaredew@gmail.com', 'nmallet@quickbase.com', 'racevedo@quickbase.com', 'James.Everett@iconplc.com','Joury.Kloostervant@iconplc.com', 'Niki.Keith@iconplc.com', 'Srinivas.Ramasubramanian@iconplc.com'];
+
+      const currentDate = new Date();
+      let oneYearLater = new Date(currentDate)
+      oneYearLater.setDate(currentDate.getDate() + 365)
+      let from = parseFloat(getYearWeek(currentDate));
+      let to = parseFloat(getYearWeek(oneYearLater));
+      // ----------- get email -----------------
+      let isEmail = 0, email;
+      for (let i = 0; i < localStorage.length; i++) {
+        let key = localStorage.key(i); // Get the key
+        let value = localStorage.getItem(key); // Get the value
+
+        // Convert value to string if it's not null or undefined
+        if (value !== null && value !== undefined) {
+          const str = String(value); // Convert and set back to localStorage
+          if(str.includes('signedInAs')) {
+            const data = JSON.parse(str);
+            const temp = Object.keys(data);
+            for(let i = 0; i < temp.length; i++){
+              if(temp[i].includes('ReportMetadataPayload')) {
+                email = data[temp[i]].signedInAs
+                isEmail = 1;
+                break;
+              }
+            }
+          }
+        }
+        if(isEmail === 1) break;
+      }
+
+      if(!email || !availableEmails.includes(email)) {
+        isAvailable = false;
+        document.getElementById('saveDIV').style.display = 'none';
+      }
+      
       let sidebarData = [];
       $('#frompicker').datepicker({
         uiLibrary: 'bootstrap'
@@ -142,7 +211,8 @@
                 data: sidebarData,
                 gravity: 1,
                 template: function(obj) {
-                  return obj.value + `<span class='delete-icon' data-id='${obj.id}'>&#10060;</span>`;
+                  if(isAvailable) return obj.value + `<span class='delete-icon' data-id='${obj.id}'>&#10060;</span>`;
+                  else return obj.value;
                 },
                 onClick: {
                   "delete-icon": function(e, id) {        
@@ -217,14 +287,14 @@
           }
         }
       })
-      let netherlandsSelect = new SlimSelect({
-        select: '#netherlands',
+      let employeeSelect = new SlimSelect({
+        select: '#employees',
         settings: {
-          placeholderText: 'Netherlands Employee',
+          placeholderText: 'Employee',
         },
         events: {
           afterChange: (newVal) => {
-            netherlandsChange();
+            employeeChange();
           }
         }
       })
@@ -250,6 +320,38 @@
           }
         }
       })
+
+      let fromSelect = new SlimSelect({
+        select: '#fromSel',
+        settings: {
+          placeholderText: 'Show Stacked Bar',
+        },
+        events: {
+          afterChange: (newVal) => {
+            fromChange();
+          }
+        }
+      })
+
+      let toSelect = new SlimSelect({
+        select: '#toSel',
+        settings: {
+          placeholderText: 'Show Stacked Bar',
+        },
+        events: {
+          afterChange: (newVal) => {
+            toChange();
+          }
+        }
+      })
+
+      fromType = Number(fromSelect.getSelected()[0]);
+      toType = Number(toSelect.getSelected()[0]);
+
+      document.getElementById('frompicker').style.display = 'none';
+      document.getElementById('topicker').style.display = 'none';
+      document.getElementById('fromInput').style.display = 'none';
+      document.getElementById('toInput').value = '365';
 
       async function saveFilters() {
 
@@ -282,7 +384,7 @@
                 "value": JSON.stringify(deparSelFilter)
               },
               8: {
-                "value": JSON.stringify(netheSelE_Filter)
+                "value": JSON.stringify(employeeSelFilter)
               },
               9: {
                 "value": JSON.stringify(calendarSelFilter)
@@ -298,6 +400,18 @@
               },
               14: {
                 "value": String(stackedType)
+              },
+              15: {
+                "value": String(fromType)
+              },
+              16: {
+                "value": String(fromInputVal)
+              },
+              17: {
+                "value": String(toType)
+              },
+              18: {
+                "value": String(toInputVal)
               },
             }
           ]
@@ -317,9 +431,10 @@
         const newItem = { id: webix.uid(), value: name, filter: {
             laboratory: laboSelFilter,
             department: deparSelFilter,
-            netherlands: netheSelE_Filter,
+            employees: employeeSelFilter,
             calendarType: calendarSelFilter,
             employee: emploSelFilter,
+            stacked: stackedType,
             from: fromFilters,
             to: toFilters,
           } 
@@ -345,8 +460,11 @@
         laboratorySelect.setSelected(laboSelFilter);
         deparSelFilter = filter?.department;
         departmentSelect.setSelected(deparSelFilter);
-        netheSelE_Filter = filter?.netherlands;
-        netherlandsSelect.setSelected(netheSelE_Filter);
+        employeeSelFilter = filter?.employees;
+        flag = 1;
+        tempEmployee = employeeSelFilter;
+        console.log(tempEmployee)
+        // employeeSelect.setSelected(tempEmployee);
         calendarSelFilter = filter?.calendarType;
         calendarSelect.setSelected(calendarSelFilter);
         stackedType = filter?.stacked;
@@ -358,14 +476,22 @@
         if(fromFilters !== 0) {
           $('#frompicker').datepicker('setDate', getFirstDayOfWeek(fromFilters));
         } else {
-          $('#frompicker').datepicker('clearDates');
+          $('#frompicker').datepicker('setDate', currentDate)        
         }
         toFilters = filter?.to;
         if(toFilters !== 0) {
           $('#topicker').datepicker('setDate', getFirstDayOfWeek(toFilters));
         } else {
-          $('#topicker').datepicker('clearDates');
+          $('#topicker').datepicker('setDate', oneYearLater);
         }
+        fromInputVal = filter?.fromInputVal;
+        document.getElementById('fromInput').value = String(fromInputVal);
+        fromType = filter?.fromType;
+        fromSelect.setSelected(String(fromType));
+        toInputVal = filter?.toInputVal;
+        document.getElementById('toInput').value = String(toInputVal);
+        toType = filter?.toType;
+        toSelect.setSelected(String(toType));
         google.charts.setOnLoadCallback(drawChart);
       }
       function getFirstDayOfWeek(yearWeek) {
@@ -409,14 +535,38 @@
 
       function laboratoryChange() {
         laboSelFilter = laboratorySelect.getSelected();
+        console.log(2)
+        if(laboSelFilter[0] === 'NETHERLANDS'){
+          employeeSelect.setData(netherlands_E_Filters.map(item => {
+            return {text: item, value: item}
+          }))
+        }
+        else if(laboSelFilter[0] === 'LENEXA'){
+          employeeSelect.setData(lenexa_E_Filters.map(item => {
+            return {text: item, value: item}
+          }))
+        }
+        else if(laboSelFilter[0] === 'WHITESBORO'){
+          employeeSelect.setData(whitesboro_E_Filters.map(item => {
+            return {text: item, value: item}
+          }))
+        } else {
+          employeeSelect.setData(employeeFilter.map(item => {
+            return {text: item, value: item}
+          }))
+        }
+        if(flag === 1) {
+          employeeSelect.setSelected(tempEmployee);
+          flag = 0;
+        }
         google.charts.setOnLoadCallback(drawChart);
       }
       function departmentChange() {
         deparSelFilter = departmentSelect.getSelected();
         google.charts.setOnLoadCallback(drawChart);
       }
-      function netherlandsChange() {
-        netheSelE_Filter = netherlandsSelect.getSelected();
+      function employeeChange() {
+        employeeSelFilter = employeeSelect.getSelected();
         google.charts.setOnLoadCallback(drawChart);
       }
       function calendarChange() {
@@ -427,12 +577,154 @@
         stackedType = Number(stackedSelect.getSelected()[0]);
         google.charts.setOnLoadCallback(drawChart);
       }
+      function fromChange() {
+        fromType = Number(fromSelect.getSelected()[0]);
+        if(fromType === 0){
+          document.getElementById('frompicker').style.display = 'block';
+          document.getElementById('fromInput').style.display = 'none';
+          $('#frompicker').datepicker('setDate', currentDate)
+          let tempDate = new Date(currentDate);
+          fromFilters = parseFloat(getYearWeek(tempDate))
+        }
+        else if(fromType === 1) {
+          document.getElementById('fromInput').style.display = 'block';
+          document.getElementById('frompicker').style.display = 'none';
+          document.getElementById('fromInput').value = '1';
+          fromInputVal = 1;
+          let tempDate = new Date(currentDate);
+          tempDate.setDate(currentDate.getDate() - 1);
+          fromFilters = parseFloat(getYearWeek(tempDate))
+          // fromFilters.setDate
+        }
+        else if(fromType === 2) {
+          document.getElementById('frompicker').style.display = 'none';
+          document.getElementById('fromInput').style.display = 'none';
+          let tempDate = new Date(currentDate);
+          tempDate.setDate(currentDate.getDate() - 1);
+          console.log(tempDate)
+          fromFilters = parseFloat(getYearWeek(tempDate))
+          console.log(fromFilters)
+        }
+        else if(fromType === 3) {
+          document.getElementById('frompicker').style.display = 'none';
+          document.getElementById('fromInput').style.display = 'none';
+          let tempDate = new Date(currentDate);
+          fromFilters = parseFloat(getYearWeek(tempDate))
+        }
+        else if(fromType === 4) {
+          document.getElementById('frompicker').style.display = 'none';
+          document.getElementById('fromInput').style.display = 'none';
+          let tempDate = new Date(currentDate);
+          tempDate.setDate(currentDate.getDate() + 1);
+          fromFilters = parseFloat(getYearWeek(tempDate))
+        }
+        else if(fromType === 5) {
+          document.getElementById('fromInput').style.display = 'block';
+          document.getElementById('frompicker').style.display = 'none';
+          document.getElementById('fromInput').value = '1';
+          fromInputVal = 1;
+          let tempDate = new Date(currentDate);
+          tempDate.setDate(currentDate.getDate() + 1);
+          fromFilters = parseFloat(getYearWeek(tempDate))
+        }
+        google.charts.setOnLoadCallback(drawChart);
+      }
+
+      function toChange() {
+        toType = Number(toSelect.getSelected()[0]);
+        if(toType === 0){
+          document.getElementById('topicker').style.display = 'block';
+          document.getElementById('toInput').style.display = 'none';
+          $('#topicker').datepicker('setDate', oneYearLater)
+          let tempDate = new Date(oneYearLater);
+          toFilters = parseFloat(getYearWeek(tempDate))
+        }
+        else if(toType === 1) {
+          document.getElementById('toInput').style.display = 'block';
+          document.getElementById('topicker').style.display = 'none';
+          document.getElementById('toInput').value = '1';
+          toInputVal = 1;
+          let tempDate = new Date(currentDate);
+          tempDate.setDate(currentDate.getDate() - 1);
+          toFilters = parseFloat(getYearWeek(tempDate))
+          // fromFilters.setDate
+        }
+        else if(toType === 2) {
+          document.getElementById('topicker').style.display = 'none';
+          document.getElementById('toInput').style.display = 'none';
+          let tempDate = new Date(currentDate);
+          tempDate.setDate(currentDate.getDate() - 1);
+          toFilters = parseFloat(getYearWeek(tempDate))
+        }
+        else if(toType === 3) {
+          document.getElementById('topicker').style.display = 'none';
+          document.getElementById('toInput').style.display = 'none';
+          let tempDate = new Date(currentDate);
+          toFilters = parseFloat(getYearWeek(tempDate))
+        }
+        else if(toType === 4) {
+          document.getElementById('topicker').style.display = 'none';
+          document.getElementById('toInput').style.display = 'none';
+          let tempDate = new Date(currentDate);
+          tempDate.setDate(currentDate.getDate() + 1);
+          toFilters = parseFloat(getYearWeek(tempDate))
+        }
+        else if(toType === 5) {
+          document.getElementById('toInput').style.display = 'block';
+          document.getElementById('topicker').style.display = 'none';
+          document.getElementById('toInput').value = '1';
+          toInputVal = 1;
+          let tempDate = new Date(currentDate);
+          tempDate.setDate(currentDate.getDate() + 1);
+          toFilters = parseFloat(getYearWeek(tempDate))
+        }
+        google.charts.setOnLoadCallback(drawChart);
+      }
+
       document.addEventListener('DOMContentLoaded', () => {
         const employeeInput = document.getElementById('employeeInput');
-        // const fromInput = document.getElementById('fromInput');
-        // const toInput = document.getElementById('toInput');
+        const fromInput = document.getElementById('fromInput');
+        const toInput = document.getElementById('toInput');
+        
+        $('#frompicker').datepicker('setDate', currentDate)
+        $('#topicker').datepicker('setDate', oneYearLater);
         const sameAxis = document.getElementById('sameaxis');
+
+        loadingElement = document.getElementById('loading');
+        resultElement = document.getElementById('chart_div');
+
+        // Show loading indicator
+        loadingElement.style.display = 'flex';
+
         let timeout = null;
+
+        fromInput.addEventListener('input', () => {
+          fromInputVal = Number(fromInput.value);
+          let tempDate = new Date(currentDate);
+          if(fromType === 1){
+            tempDate.setDate(currentDate.getDate() - fromInputVal);
+            fromFilters = parseFloat(getYearWeek(tempDate))
+          }
+          else if(fromType === 5) {
+            tempDate.setDate(currentDate.getDate() + fromInputVal);
+            fromFilters = parseFloat(getYearWeek(tempDate))
+          }
+          google.charts.setOnLoadCallback(drawChart);
+        })
+
+        toInput.addEventListener('input', () => {
+          toInputVal = Number(toInput.value);
+          let tempDate = new Date(currentDate);
+          if(toType === 1){
+            tempDate.setDate(currentDate.getDate() - toInputVal);
+            toFilters = parseFloat(getYearWeek(tempDate))
+          }
+          else if(toType === 5) {
+            tempDate.setDate(currentDate.getDate() + toInputVal);
+            toFilters = parseFloat(getYearWeek(tempDate))
+          }
+          google.charts.setOnLoadCallback(drawChart);
+        })
 
         sameAxis.addEventListener('change', () => {
           if(sameAxis.checked) {
@@ -451,23 +743,23 @@
             performSearch(employeeInput.value);
           }, 800); 
         });
-        autocomplete('#employeeInput', { hint: false }, [
-          {
-            source: function(query, callback) {
-              // Filter the data based on the query
-              const matches = employeeFilter.filter(employee => {
-                return employee.name.toLowerCase().startsWith(query.toLowerCase());
-              });
-              callback(matches);
-            },
-            displayKey: 'name',
-            templates: {
-              suggestion: function(suggestion) {
-                return '<div>' + suggestion.name + '</div>';
-              }
-            }
-          }
-        ]);
+        // autocomplete('#employeeInput', { hint: false }, [
+        //   {
+        //     source: function(query, callback) {
+        //       // Filter the data based on the query
+        //       const matches = employeeFilter.filter(employee => {
+        //         return employee.name.toLowerCase().startsWith(query.toLowerCase());
+        //       });
+        //       callback(matches);
+        //     },
+        //     displayKey: 'name',
+        //     templates: {
+        //       suggestion: function(suggestion) {
+        //         return '<div>' + suggestion.name + '</div>';
+        //       }
+        //     }
+        //   }
+        // ]);
       });
       function performSearch(query) {
         emploSelFilter = query;
@@ -484,7 +776,7 @@
 
           // let dataa = 0;
           const tempEmployee = [];
-          calendar_resource_Data.forEach(([yearWeek, resourceFTE, calendarFTE, serviceType, assayType, laboratory, department, employee, netherlands, calendarType]) => {
+          calendar_resource_Data.forEach(([yearWeek, resourceFTE, calendarFTE, serviceType, assayType, laboratory, department, employee, netherlands, calendarType, lenexa, whitesboro]) => {
             if (yearWeek >= from && yearWeek <= to) {
               if( !serviceTypes.includes(serviceType) && serviceType !== "") {
                 serviceTypes.push(serviceType)
@@ -498,11 +790,17 @@
               if( !departmentFilters.includes(department.toUpperCase()) && department !== "" ){
                 departmentFilters.push(department.toUpperCase())
               }
-              if(!tempEmployee.includes(employee) && employee !== ""){
-                tempEmployee.push(employee);
+              if(!employeeFilter.includes(employee) && employee !== ""){
+                employeeFilter.push(employee);
               }
               if( !netherlands_E_Filters.includes(netherlands) && netherlands !== "" ){
                 netherlands_E_Filters.push(netherlands)
+              }
+              if( !lenexa_E_Filters.includes(lenexa) && lenexa !== "" ){
+                lenexa_E_Filters.push(lenexa)
+              }
+              if( !whitesboro_E_Filters.includes(whitesboro) && whitesboro !== "" ){
+                whitesboro_E_Filters.push(whitesboro)
               }
               if( !calendarTypeFilters.includes(calendarType) && calendarType !== "" ){
                 calendarTypeFilters.push(calendarType)
@@ -511,16 +809,16 @@
           });
           // serviceTypes.push('None');
           // assayTypes.push('None');
-          employeeFilter = tempEmployee.map(item => {
-            return {name: item}
-          })
+          // employeeFilter = tempEmployee.map(item => {
+          //   return {name: item}
+          // })
           laboratorySelect.setData(laboratoryFilters.map(item => {
             return {text: item, value: item}
           }))
           departmentSelect.setData(departmentFilters.map(item => {
             return {text: item, value: item}
           }))
-          netherlandsSelect.setData(netherlands_E_Filters.map(item => {
+          employeeSelect.setData(employeeFilter.map(item => {
             return {text: item, value: item}
           }))
           calendarSelect.setData(calendarTypeFilters.map(item => {
@@ -544,7 +842,7 @@
             headers: headers,
             body: JSON.stringify({
               "from": 'bub7gjqmz',
-              "select": [6,7,8,9,10,11,12,13,14],
+              "select": [6,7,8,9,10,11,12,13,14,15,16,17,18],
               "options": {
                 "skip": 0,
                 "top": 0,
@@ -569,12 +867,16 @@
               filter: {
                 laboratory: JSON.parse(item['6'].value),
                 department: JSON.parse(item['7'].value),
-                netherlands: JSON.parse(item['8'].value),
+                employees: JSON.parse(item['8'].value),
                 calendarType: JSON.parse(item['9'].value),
                 employee: item['10'].value,
                 from: parseFloat(item['11'].value),
                 to: parseFloat(item['12'].value),
                 stacked: Number(item['14'].value),
+                fromType: Number(item['15'].value),
+                fromInputVal: Number(item['16'].value),
+                toType: Number(item['17'].value),
+                toInputVal: Number(item['18'].value),
               }
             }
           })
@@ -585,7 +887,7 @@
           throw error;
         }
       }
-      async function fetchDataFromQuickbase(tableId, appId, serviceType_ID, assayType_ID, id1, id2, id3, laboratory, department, employee, netherlands, calendarType) {
+      async function fetchDataFromQuickbase(tableId, appId, serviceType_ID, assayType_ID, id1, id2, id3, laboratory, department, employee, netherlands, calendarType, lenexa, whitesboro) {
         const headers = {
           'QB-Realm-Hostname': 'icon.quickbase.com',
           'Authorization': 'QB-USER-TOKEN b9mjdd_py5p_0_bq3jzc2ceck37fb65tg4ybwegaxm',
@@ -598,7 +900,7 @@
             headers: headers,
             body: JSON.stringify({
               "from": tableId,
-              "select": [id1, id2, id3, serviceType_ID, assayType_ID, laboratory, department, employee, netherlands, calendarType],
+              "select": [id1, id2, id3, serviceType_ID, assayType_ID, laboratory, department, employee, netherlands, calendarType, lenexa, whitesboro],
               "options": {
                 "skip": 0,
                 "top": 0,
@@ -628,6 +930,8 @@
               record[`${employee}`]?.value ?? 0,
               record[`${netherlands}`]?.value ?? 0,
               record[`${calendarType}`]?.value ?? 0,
+              record[`${lenexa}`]?.value ?? 0,
+              record[`${whitesboro}`]?.value ?? 0,
             ];
           });
 
@@ -639,6 +943,33 @@
         }
       }
 
+      function includeName(datalist, name) {
+        for (let i = 0; i < datalist.length; i++) {
+          if (name.includes(datalist[i])) {
+            return true;
+          }
+        }
+        return false;
+      }
+
+      function employeeValid(netherlands, lenexa, whitesboro, employee) {
+        if(laboSelFilter[0] === 'NETHERLANDS') {
+          if(employeeSelFilter.includes(netherlands)) return true
+          else return false
+        }
+        else if(laboSelFilter[0] === 'LENEXA') {
+          if(employeeSelFilter.includes(lenexa)) return true
+          else return false
+        }
+        else if(laboSelFilter[0] === 'WHITESBORO') {
+          if(employeeSelFilter.includes(whitesboro)) return true
+          else return false
+        } else {
+          if(employeeSelFilter.includes(employee)) return true
+          else return false
+        }
+      }
+
       function recorrect(data) {
         const sumMap = {};
         if(fromFilters !== 0 && toFilters !== 0 && fromFilters > toFilters) {
@@ -646,14 +977,16 @@
           return;
         }
         // let dataa = 0;
+        let employList = [];
+        if(emploSelFilter !== '') employList= emploSelFilter.split(" OR ").map(part => part.toUpperCase().trim()).filter(part => part);;
         const length = stackedType === 1 ? serviceTypes.length : stackedType === 2 ? assayTypes.length : 0;
-        data.forEach(([yearWeek, resourceFTE, calendarFTE, serviceType, assayType, laboratory, department, employee, netherlands, calendarType]) => {
+        data.forEach(([yearWeek, resourceFTE, calendarFTE, serviceType, assayType, laboratory, department, employee, netherlands, calendarType, lenexa, whitesboro]) => {
           if (yearWeek >= from && (yearWeek >= fromFilters || fromFilters === 0) && 
               yearWeek <= to && (yearWeek <= toFilters || toFilters === 0) &&
               (laboSelFilter.length === 0 || laboSelFilter.includes(laboratory.toUpperCase())) && 
               (deparSelFilter.length === 0 || deparSelFilter.includes(department.toUpperCase())) && 
-              (emploSelFilter === "" || employee.toUpperCase().includes(emploSelFilter.toUpperCase())) && 
-              (netheSelE_Filter.length === 0 || netheSelE_Filter.includes(netherlands)) &&
+              (employList.length === 0 || includeName(employList, employee.toUpperCase().trim())) && 
+              (employeeSelFilter.length === 0 || employeeValid(netherlands, lenexa, whitesboro, employee)) &&
               (calendarSelFilter.length === 0 || calendarSelFilter.includes(calendarType))) {
             // serviceType = serviceType !== "" ? serviceType : 'None';
             // assayType = assayType !== "" ? assayType : 'None';
@@ -722,6 +1055,8 @@
         const employee = 79;
         const netherlands = 98;
         const calendarType = 92;
+        const lenexa = 99;
+        const whitesboro = 100;
         const appId = 'br37izpar';
 
         try {
@@ -736,7 +1071,9 @@
                                                                 department,
                                                                 employee,
                                                                 netherlands,
-                                                                calendarType);
+                                                                calendarType,
+                                                                lenexa,
+                                                                whitesboro);
           return calendar_resource_Data;
         } catch (error) {
           console.error(error)
@@ -744,6 +1081,7 @@
       }
 
       async function drawChart() {
+        if(!calendar_resource_Data) return
         try{
           const resultData = recorrect(calendar_resource_Data);
           if (!resultData || resultData.length <= 0) {
@@ -753,7 +1091,7 @@
           let stackedAxis = [];
           if(stackedType === 1) {
             stackedAxis = serviceTypes.map(item => {
-              return [`Calendar Event FTE - ${item}`]
+              return `Calendar Event FTE - ${item}`
             })
           } else {
             stackedAxis = assayTypes.map(item => {
@@ -791,10 +1129,10 @@
           seriesOptions[0] = { type: 'line' };
           option = {
             title: stackedType === 0 ? 'Calendar + Resource FTE' : 'Calendar + Resource FTE(Stacked Bar)',
-            curveType: 'function',
+            curveType: 'none',
             seriesType: 'line',
             series: stackedType === 0 ? {
-              0: { color: 'blue', curveType: 'function' },
+              0: { color: 'blue', curveType: 'none' },
               1: { color: 'red', type: 'bars' }
             } : seriesOptions,
             legend: { position: 'bottom' },
@@ -838,6 +1176,10 @@
       getFilterData();
       getData().then((val) => {
         getFilters();
+        loadingElement.style.display = 'none';
+
+            // Show result
+        resultElement.style.display = 'flex';
         google.charts.setOnLoadCallback(drawChart);
       });
 
