@@ -82,7 +82,7 @@
           </select>
           <select id="department" multiple class="w-[300px] m-4">
           </select>
-          <select id="employees" multiple class="w-[300px] m-4">
+          <select id="employees"  style="display: none;" multiple class="w-[300px] m-4">
           </select>
           <select id="calendartype" multiple class="w-[300px] m-4">
           </select>
@@ -175,10 +175,10 @@
         if(isEmail === 1) break;
       }
 
-      if(!email || !availableEmails.includes(email)) {
-        isAvailable = false;
-        document.getElementById('saveDIV').style.display = 'none';
-      }
+      // if(!email || !availableEmails.includes(email)) {
+      //   isAvailable = false;
+      //   document.getElementById('saveDIV').style.display = 'none';
+      // }
       
       let sidebarData = [];
       $('#frompicker').datepicker({
@@ -211,11 +211,10 @@
                 data: sidebarData,
                 gravity: 1,
                 template: function(obj) {
-                  if(isAvailable) return obj.value + `<span class='delete-icon' data-id='${obj.id}'>&#10060;</span>`;
-                  else return obj.value;
+                  return obj.value + `<span class='delete-icon' data-id='${obj.id}'>&#10060;</span>`;
                 },
                 onClick: {
-                  "delete-icon": function(e, id) {        
+                  "delete-icon": function(e, id) {
                     const item = this.getItem(id);
                     deleteItemFromSidebar(id, item.value);
                     return false; // Prevents the default item click event
@@ -1091,14 +1090,14 @@
           let stackedAxis = [];
           if(stackedType === 1) {
             stackedAxis = serviceTypes.map(item => {
-              return `Calendar Event FTE - ${item}`
+              return `${item}`
             })
           } else {
             stackedAxis = assayTypes.map(item => {
-              return `Calendar Event FTE - ${item}`
+              return `${item}`
             })
           }
-          const axis = ['Year-Week', 'Resource FTE', stackedAxis, 'Calendar Event FTE - None'].flat();
+          const axis = ['Year-Week', 'Resource FTE', stackedAxis, 'None'].flat();
           let chartData = [];
           if(stackedType === 0){
             chartData = [
